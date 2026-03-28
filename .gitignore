@@ -1,0 +1,73 @@
+# -----------------------------
+# Python / environment files
+# -----------------------------
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.swp
+*.swo
+*.log
+
+# Conda / virtual environment
+env/
+venv/
+.venv/
+*.conda
+
+# -----------------------------
+# Generated anvi'o outputs
+# -----------------------------
+ANI/
+mat/
+SPLIT_core_genome/
+SPLIT_accessory_genome/
+
+# -----------------------------
+# Database files
+# -----------------------------
+*.db
+*.sqlite
+*.sqlite3
+
+# -----------------------------
+# Large sequence / genome files
+# -----------------------------
+*.fasta
+*.fa
+*.fna
+*.faa
+*.ffn
+*.gz
+
+# -----------------------------
+# DIAMOND / BLAST generated files
+# -----------------------------
+*.dmnd
+*.daa
+
+# -----------------------------
+# Temporary text outputs
+# -----------------------------
+*.txt
+*.nwk
+*.tree
+*.json
+*.csv
+
+# -----------------------------
+# OS / editor files
+# -----------------------------
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# -----------------------------
+# Keep important files
+# -----------------------------
+!README.md
+!readme.md
+!script.sh
+!installation.sh
+!*.md

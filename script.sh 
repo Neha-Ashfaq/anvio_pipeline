@@ -1,0 +1,123 @@
+# Step 1: download Fusobacterium genomes from NCBI
+mkdir -p ./fasta_genomes
+cd ./fasta_genomes
+
+# Fusobacterium nucleatum subsp. nucleatum ATCC 25586
+wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/007/465/GCF_000007465.2_ASM746v2/GCF_000007465.2_ASM746v2_genomic.fna.gz \
+    -O fb_nucl.fna.gz
+
+# Fusobacterium ulcerans ATCC 49185
+wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/154/265/GCF_000154265.1_ASM15426v1/GCF_000154265.1_ASM15426v1_genomic.fna.gz \
+    -O fb_ulcer.fna.gz
+
+# Fusobacterium gonidiaformans ATCC 25563
+wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/154/305/GCF_000154305.1_ASM15430v1/GCF_000154305.1_ASM15430v1_genomic.fna.gz \
+    -O fb_gonid.fna.gz
+
+# Fusobacterium necrophorum subsp. funduliforme F1260
+wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/001/515/570/GCF_001515570.1_ASM151557v1/GCF_001515570.1_ASM151557v1_genomic.fna.gz \
+    -O fb_necro.fna.gz
+
+gunzip *.gz
+
+# rename all genomes to .fasta
+for file in *.fna; do mv "$file" "${file%.fna}.fasta"; done
+
+# Step 2: create genomes.txt file if your fasta files are not in a folder
+ls *fasta | awk 'BEGIN{FS="."}{print $1}' > genomes.txt
+# if your fasta files are in a folder, use the following command to create genomes.txt file
+ls fasta_genomes/*.fasta | awk -F/ '{split($NF,a,"."); print a[1]}' > genomes.txt
+
+# Step 3: reformat fasta file into anvio needed files (because it won't work without it)
+for g in `cat genomes.txt`
+do
+    echo
+    echo "Working on $g ..."
+    echo
+    anvi-script-reformat-fasta ${g}.fasta \
+                               --simplify-names \
+                               -o ${g}_new.fasta
+done
+
+# Step 4: create contigs databases 
+for g in `cat genomes.txt`
+do
+    echo
+    echo "Working on $g ..."
+    echo
+    anvi-gen-contigs-database -f ${g}_new.fasta \
+                              -o fusobac_${g}.db \
+                              --num-threads 4 \
+                              -n fusobac_${g}
+done
+
+
+
+
+# Step 5: annotate contigs databases
+for g in *.db
+do
+    anvi-run-hmms -c $g --num-threads 8
+    anvi-run-ncbi-cogs -c $g --num-threads 8
+    anvi-scan-trnas -c $g --num-threads 8
+    anvi-run-scg-taxonomy -c $g --num-threads 8
+done
+
+
+# display statistics of contigs databases
+anvi-display-contigs-stats *db
+
+# create external genome file
+anvi-script-gen-genomes-file --input-dir . \
+                             -o external-genomes.txt
+# check genome completeness and redundancy
+anvi-estimate-genome-completeness -e external-genomes.txt
+
+
+
+# computing pangenome
+anvi-gen-genomes-storage -e external-genomes.txt \
+                         -o mat-GENOMES.db
+
+anvi-pan-genome -g mat-GENOMES.db \
+                --project-name mat \
+                --num-threads 10
+
+# display pangenome
+anvi-display-pan -p mat/mat-PAN.db \
+                    -g mat-GENOMES.db
+
+
+# compute genome similarity with ANI
+anvi-compute-genome-similarity --external-genomes external-genomes.txt \
+                               --program pyANI \
+                               --output-dir ANI \
+                               --num-threads 10 \
+                               --pan-db mat/mat-PAN.db
+# Display pangenome again with ANI values
+anvi-display-pan -p mat/mat-PAN.db \
+                    -g mat-GENOMES.db
+
+
+# you should remember the bin names and the collection name you used when you created the pangenome, because you will need it for splitting the pangenome into core and accessory genomes. In this example, the collection name is "final", the bin name for core genome is "core_genome" and the bin name for accessory genome is "accessory_genoms". You can check the bin names and collection name by running the following command:
+# Anvio split pangenome into core and accessory
+anvi-split -p mat/mat-PAN.db \
+           -g mat-GENOMES.db \
+           --collection-name final \
+           --bin-id core_genome \
+           --output-dir SPLIT_core_genome
+
+
+anvi-display-pan -p SPLIT_core_genome/core_genome/PAN.db \
+                 -g mat-GENOMES.db
+
+
+anvi-split -p mat/mat-PAN.db \
+           -g mat-GENOMES.db \
+           --collection-name final \
+           --bin-id accessory_genoms \
+           --output-dir SPLIT_accessory_genomes
+
+
+anvi-display-pan -p SPLIT_accessory_genomes/accessory_genoms/PAN.db \
+                 -g mat-GENOMES.db
